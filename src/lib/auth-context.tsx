@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { configureApiTokens, loginRequest, refreshRequest } from "./api";
 import type { Session } from "./types";
 
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!session?.refreshToken) return null;
     try {
       const tokens = await refreshRequest(session.refreshToken);
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       return null;
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh,
     });
     return () => configureApiTokens(null);
-  }, [session]);
+  }, [refresh, session]);
 
   const value = useMemo<AuthContextValue>(() => ({
     session,
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return nextSession;
     },
     logout: () => setSession(null),
-  }), [isLoading, session]);
+  }), [isLoading, refresh, session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
