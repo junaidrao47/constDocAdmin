@@ -59,8 +59,10 @@ export async function loginRequest(email: string, password: string) {
 }
 
 export async function refreshRequest(refreshToken: string) {
-  return apiRequest<{ user: import("./types").User; accessToken: string; refreshToken: string }>("/auth/refresh", {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
   });
+  return parseResponse<{ user: import("./types").User; accessToken: string; refreshToken: string }>(response);
 }
