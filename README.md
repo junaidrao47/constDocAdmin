@@ -1,4 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Local full-stack setup
+
+Run PostgreSQL, Redis, the API, and the worker from `../constDocManagment` with Docker Compose. The API is published on `http://localhost:3001`; Next.js runs on `http://localhost:3000`.
+
+Copy `.env.local.example` to `.env.local`, then start the frontend:
+
+```powershell
+Copy-Item .env.local.example .env.local
+npm install
+npm run dev
+```
+
+Start the backend in another terminal:
+
+```powershell
+Set-Location ..\constDocManagment
+Copy-Item .env.example .env
+# Fill DB_USER, DB_PASS, JWT_SECRET, and JWT_REFRESH_SECRET in .env.
+docker compose up --build
+```
+
+Verify the services before opening the frontend:
+
+```powershell
+Invoke-WebRequest http://localhost:3001/health
+Invoke-WebRequest http://localhost:3001/health/ready
+```
+
+Use `docker compose down` to stop the stack. Named volumes preserve database, Redis, and local document data.
+
+## Testing
+
+Run frontend tests with `npm test`. Run backend API smoke tests from `../constDocManagment` with `test\run-tests.bat`.
 
 ## Getting Started
 
