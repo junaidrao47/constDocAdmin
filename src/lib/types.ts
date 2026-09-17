@@ -11,10 +11,14 @@ export type DocumentStatus =
 export interface User {
   id: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string | null;
+  phone?: string | null;
   role: UserRole;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+export interface UserList { items: User[]; total: number; page: number; pageSize: number; }
 
 export interface Session {
   user: User;
@@ -44,3 +48,5 @@ export interface ApiErrorShape {
   message: string;
   status: number;
 }
+export type QuotationStatus = "draft" | "sent" | "under_review" | "accepted" | "rejected" | "expired";
+export interface Quotation { id: string; customerId: string; totalPrice: string; status: QuotationStatus; workerCount: number; expiresAt: string | null; createdAt: string; customer?: User; rejectionReason?: string | null; }

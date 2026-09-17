@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { configureApiTokens, loginRequest, refreshRequest } from "./api";
+import { configureApiTokens, loginRequest, logoutRequest, refreshRequest } from "./api";
 import type { Session } from "./types";
+
+const SESSION_STORAGE_KEY = "constdoc.session";
 
 interface AuthContextValue {
   session: Session | null;
@@ -24,14 +26,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokens = await refreshRequest(session.refreshToken);
       const nextSession = { ...session, ...tokens };
       setSession(nextSession);
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
       return nextSession.accessToken;
     } catch {
       setSession(null);
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return null;
     }
   }, [session]);
 
   useEffect(() => {
+    const storedSession = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (storedSession) {
+      try {
+        setSession(JSON.parse(storedSession) as Session);
+      } catch {
+        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
     setIsLoading(false);
   }, []);
 
@@ -51,9 +63,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await loginRequest(email, password);
       const nextSession = result;
       setSession(nextSession);
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
       return nextSession;
     },
-    logout: () => setSession(null),
+    logout: () => {
+      const refreshToken = session?.refreshToken;
+      setSession(null);
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      if (refreshToken) void logoutRequest(refreshToken).catch(() => undefined);
+    },
   }), [isLoading, refresh, session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

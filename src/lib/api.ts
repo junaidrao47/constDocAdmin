@@ -1,6 +1,6 @@
 import type { ApiEnvelope, ApiErrorShape } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 export class ApiError extends Error implements ApiErrorShape {
   status: number;
@@ -18,15 +18,19 @@ type TokenStore = {
 };
 
 let tokenStore: TokenStore | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
 
 export function configureApiTokens(store: TokenStore | null) {
   tokenStore = store;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const payload = (await response.json().catch(() => null)) as ApiEnvelope<T> | { message?: string } | null;
+  const payload = (await response.json().catch(() => null)) as (ApiEnvelope<T> & { error?: unknown; details?: { fieldErrors?: Record<string, string[]> } }) | null;
   if (!response.ok) {
-    throw new ApiError(payload?.message ?? "The API request failed.", response.status);
+    const fieldErrors = payload?.details?.fieldErrors ?? (payload?.error && typeof payload.error === "object" ? (payload.error as { fieldErrors?: Record<string, string[]> }).fieldErrors : undefined);
+    const first = Object.entries(fieldErrors ?? {}).find(([, messages]) => messages.length > 0);
+    const message = typeof payload?.message === "string" ? payload.message : typeof payload?.error === "string" ? payload.error : first ? `${first[0]}: ${first[1][0]}` : "The API request failed.";
+    throw new ApiError(message, response.status);
   }
 
   return (payload && "data" in payload ? payload.data : payload) as T;
@@ -42,7 +46,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, hasRet
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   if (response.status === 401 && tokenStore && !hasRetried) {
-    const refreshedToken = await tokenStore.refresh();
+    refreshInFlight ??= tokenStore.refresh().finally(() => { refreshInFlight = null; });
+    const refreshedToken = await refreshInFlight;
     if (refreshedToken) {
       return apiRequest<T>(path, init, true);
     }
@@ -65,4 +70,8 @@ export async function refreshRequest(refreshToken: string) {
     body: JSON.stringify({ refreshToken }),
   });
   return parseResponse<{ user: import("./types").User; accessToken: string; refreshToken: string }>(response);
+}
+
+export function logoutRequest(refreshToken: string) {
+  return apiRequest<void>("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) });
 }

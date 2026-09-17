@@ -1,0 +1,12 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/api";
+import type { Quotation, QuotationStatus } from "@/lib/types";
+
+export default function StaffQuotationsPage() {
+  const client = useQueryClient();
+  const quotations = useQuery({ queryKey: ["staff-quotations"], queryFn: () => apiRequest<Quotation[]>("/agent/quotations") });
+  const update = useMutation({ mutationFn: ({ id, status }: { id: string; status: QuotationStatus }) => apiRequest(`/agent/quotations/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }), onSuccess: () => client.invalidateQueries({ queryKey: ["staff-quotations"] }) });
+  return <div className="p-5 sm:p-8"><header className="mb-8 border-b border-slate-200 pb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">Commercial workflow</p><h1 className="mt-2 text-3xl font-semibold">Quotation review</h1><p className="mt-2 text-sm text-slate-500">Move customer quotations through review and decision.</p></header><div className="overflow-x-auto border border-slate-200 bg-white"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Total</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{(quotations.data ?? []).map((quotation) => <tr key={quotation.id}><td className="px-5 py-4">{quotation.customer?.name ?? quotation.customer?.email ?? quotation.customerId}</td><td className="px-5 py-4">PKR {Number(quotation.totalPrice).toLocaleString()}</td><td className="px-5 py-4 uppercase text-xs">{quotation.status}</td><td className="px-5 py-4 text-right">{quotation.status === "draft" && <button className="bg-slate-800 px-3 py-2 text-xs font-semibold text-white" onClick={() => update.mutate({ id: quotation.id, status: "sent" })}>Send</button>}{quotation.status === "sent" && <button className="bg-cyan-700 px-3 py-2 text-xs font-semibold text-white" onClick={() => update.mutate({ id: quotation.id, status: "under_review" })}>Start review</button>}</td></tr>)}</tbody></table></div>{quotations.isError && <p className="mt-5 text-sm text-red-700">Unable to load quotations.</p>}</div>;
+}
