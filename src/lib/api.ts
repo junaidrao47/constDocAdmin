@@ -29,7 +29,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const fieldErrors = payload?.details?.fieldErrors ?? (payload?.error && typeof payload.error === "object" ? (payload.error as { fieldErrors?: Record<string, string[]> }).fieldErrors : undefined);
     const first = Object.entries(fieldErrors ?? {}).find(([, messages]) => messages.length > 0);
-    const message = typeof payload?.message === "string" ? payload.message : typeof payload?.error === "string" ? payload.error : first ? `${first[0]}: ${first[1][0]}` : "The API request failed.";
+    const message = first ? `${first[0]}: ${first[1][0]}` : typeof payload?.message === "string" ? payload.message : typeof payload?.error === "string" ? payload.error : "The API request failed.";
     throw new ApiError(message, response.status);
   }
 

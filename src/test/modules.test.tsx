@@ -30,7 +30,7 @@ describe("frontend modules", () => {
   });
 
   it("loads documents and approves an item under review", async () => {
-    apiRequest.mockImplementation((path: string) => path === "/documents"
+    apiRequest.mockImplementation((path: string) => path === "/agent/documents"
       ? Promise.resolve([{ id: "doc-1", customerId: "cust-1", fileName: "permit.pdf", status: "under_review", updatedAt: "2026-01-01T00:00:00.000Z" }])
       : Promise.resolve({}));
     const user = userEvent.setup();
