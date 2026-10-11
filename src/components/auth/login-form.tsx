@@ -62,24 +62,24 @@ export function LoginForm({ audience }: { audience: LoginAudience }) {
     <main
       className={
         isAdmin
-          ? "min-h-screen bg-[#f4f0e8] px-5 py-10 text-slate-900"
-          : "min-h-screen bg-[#10252b] px-5 py-10 text-slate-900"
+          ? "min-h-screen bg-background px-5 py-10 text-foreground"
+          : "min-h-screen bg-primary px-5 py-10 text-foreground"
       }
     >
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center justify-center">
         <section
           className={
             isAdmin
-              ? "w-full max-w-md border border-amber-900/20 bg-white p-8 shadow-xl"
-              : "w-full max-w-md border border-cyan-900 bg-[#f4f7f8] p-8 shadow-2xl"
+              ? "w-full max-w-md border border-border bg-card p-8 shadow-xl"
+              : "w-full max-w-md border border-border bg-background p-8 shadow-2xl"
           }
         >
-          <div className="mb-10 border-b border-slate-200 pb-5">
+          <div className="mb-10 border-b border-border pb-5">
             <p
               className={
                 isAdmin
-                  ? "text-xs font-bold uppercase tracking-[0.2em] text-amber-700"
-                  : "text-xs font-bold uppercase tracking-[0.2em] text-cyan-700"
+                  ? "text-xs font-bold uppercase tracking-[0.2em] text-primary"
+                  : "text-xs font-bold uppercase tracking-[0.2em] text-primary"
               }
             >
               ConstDoc / {isAdmin ? "control" : "operations"}
@@ -87,21 +87,21 @@ export function LoginForm({ audience }: { audience: LoginAudience }) {
             <h1 className="mt-3 text-3xl font-semibold tracking-tight">
               {isAdmin ? "Administrator sign in" : "Staff sign in"}
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               {isAdmin
                 ? "Manage people, permissions, and platform operations."
                 : "Review customer compliance work and document decisions."}
             </p>
           </div>
           <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-muted-foreground">
               Work email
               <Input className="mt-2" type="email" autoComplete="email" {...register("email")} />
               {errors.email && (
-                <span className="mt-1 block text-xs text-red-700">{errors.email.message}</span>
+                <span className="mt-1 block text-xs text-destructive">{errors.email.message}</span>
               )}
             </label>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-muted-foreground">
               Password
               <Input
                 className="mt-2"
@@ -110,19 +110,24 @@ export function LoginForm({ audience }: { audience: LoginAudience }) {
                 {...register("password")}
               />
               {errors.password && (
-                <span className="mt-1 block text-xs text-red-700">{errors.password.message}</span>
+                <span className="mt-1 block text-xs text-destructive">
+                  {errors.password.message}
+                </span>
               )}
             </label>
             {error && (
-              <p role="alert" className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <p
+                role="alert"
+                className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+              >
                 {error}
               </p>
             )}
             <Button
               className={
                 isAdmin
-                  ? "w-full bg-amber-700 text-white hover:bg-amber-800"
-                  : "w-full bg-cyan-700 text-white hover:bg-cyan-800"
+                  ? "w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "w-full bg-primary text-primary-foreground hover:bg-primary/90"
               }
               type="submit"
               disabled={isSubmitting}
@@ -132,13 +137,13 @@ export function LoginForm({ audience }: { audience: LoginAudience }) {
                 : `Sign in to ${isAdmin ? "control" : "staff"} workspace`}
             </Button>
           </form>
-          <div className="mt-6 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
+          <div className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
             {isAdmin ? (
-              <a className="text-amber-700 underline underline-offset-4" href="/staff/login">
+              <a className="text-primary underline underline-offset-4" href="/staff/login">
                 Staff sign in
               </a>
             ) : (
-              <a className="text-cyan-700 underline underline-offset-4" href="/admin/login">
+              <a className="text-primary underline underline-offset-4" href="/admin/login">
                 Administrator sign in
               </a>
             )}

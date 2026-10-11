@@ -54,6 +54,7 @@ export interface Quotation {
   id: string;
   customerId: string;
   totalPrice: string;
+  currency?: string;
   status: QuotationStatus;
   workerCount: number;
   expiresAt: string | null;

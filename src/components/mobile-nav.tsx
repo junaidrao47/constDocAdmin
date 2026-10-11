@@ -8,14 +8,14 @@ export function MobileNav({ items }: { items: Array<{ href: string; label: strin
   return (
     <nav
       aria-label="Mobile navigation"
-      className="border-b border-white/10 bg-[#29231b] px-3 py-2 text-white lg:hidden"
+      className="border-b border-primary-foreground/10 bg-primary px-3 py-2 text-primary-foreground lg:hidden"
     >
       <div className="flex gap-2 overflow-x-auto">
         {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-white/15 text-white" : "text-white/65"}`}
+            className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-primary-foreground/15 text-primary-foreground" : "text-primary-foreground/65"}`}
           >
             {item.label}
           </Link>

@@ -81,18 +81,18 @@ export default function AdminUsersPage() {
   }
   return (
     <div className="p-5 sm:p-8">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-amber-900/15 pb-5">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             Access control
           </p>
           <h1 className="mt-2 text-3xl font-semibold">User management</h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Search accounts, create staff or customers, and control access.
           </p>
         </div>
         <Button
-          className="bg-amber-700 text-white hover:bg-amber-800"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => {
             setShowCreate(!showCreate);
             setCreateError("");
@@ -104,14 +104,14 @@ export default function AdminUsersPage() {
       {feedback && (
         <p
           role="status"
-          className="mb-5 border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+          className="mb-5 border border-success/30 bg-success/10 p-3 text-sm text-success"
         >
           {feedback}
         </p>
       )}
       {showCreate && (
         <form
-          className="mb-6 grid gap-4 border border-amber-900/15 bg-white p-5 sm:grid-cols-2 lg:grid-cols-5"
+          className="mb-6 grid gap-4 border border-border bg-card p-5 sm:grid-cols-2 lg:grid-cols-5"
           onSubmit={submitCreate}
         >
           <Input
@@ -137,7 +137,7 @@ export default function AdminUsersPage() {
             onChange={(event) => setForm({ ...form, password: event.target.value })}
           />
           <select
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="h-10 rounded-md border border-border bg-card px-3 text-sm"
             value={form.role}
             onChange={(event) => setForm({ ...form, role: event.target.value as UserRole })}
           >
@@ -148,15 +148,15 @@ export default function AdminUsersPage() {
             ))}
           </select>
           <div className="sm:col-span-2 lg:col-span-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Passwords must be 8–72 characters. Staff roles are created here only.
             </p>
-            <Button disabled={create.isPending} className="bg-slate-900 text-white">
+            <Button disabled={create.isPending} className="bg-primary text-primary-foreground">
               {create.isPending ? "Creating..." : "Create account"}
             </Button>
           </div>
           {createError && (
-            <p role="alert" className="sm:col-span-2 lg:col-span-5 text-sm text-red-700">
+            <p role="alert" className="sm:col-span-2 lg:col-span-5 text-sm text-destructive">
               {createError}
             </p>
           )}
@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
         />
         <select
           aria-label="Filter by role"
-          className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm"
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm"
           value={role}
           onChange={(event) => {
             setRole(event.target.value as typeof role);
@@ -187,7 +187,7 @@ export default function AdminUsersPage() {
         </select>
         <select
           aria-label="Filter by access"
-          className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm"
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm"
           value={status}
           onChange={(event) => {
             setStatus(event.target.value as typeof status);
@@ -200,10 +200,10 @@ export default function AdminUsersPage() {
         </select>
       </div>
       {query.isError && (
-        <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           <p>{query.error instanceof Error ? query.error.message : "Unable to load users."}</p>
           <Button
-            className="mt-3 border border-red-300 bg-white text-red-800"
+            className="mt-3 border border-destructive/30 bg-card text-destructive"
             onClick={() => void query.refetch()}
           >
             Try again
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
       {query.isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map((item) => (
-            <div className="h-16 animate-pulse bg-slate-200" key={item} />
+            <div className="h-16 animate-pulse bg-muted" key={item} />
           ))}
         </div>
       )}
@@ -229,9 +229,9 @@ export default function AdminUsersPage() {
               />
             ))}
           </div>
-          <div className="hidden overflow-x-auto border border-amber-900/15 bg-white md:block">
+          <div className="hidden overflow-x-auto border border-border bg-card md:block">
             <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <thead className="border-b border-border bg-muted text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3">Account</th>
                   <th className="px-5 py-3">Role</th>
@@ -240,18 +240,18 @@ export default function AdminUsersPage() {
                   <th className="px-5 py-3 text-right">Access</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {query.data.items.map((user) => (
                   <tr key={user.id}>
                     <td className="px-5 py-4">
                       <p className="font-medium">{user.name ?? "Unnamed user"}</p>
-                      <p className="text-xs text-slate-500">{user.email}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
                     </td>
                     <td className="px-5 py-4 uppercase text-xs tracking-wider">{user.role}</td>
                     <td className="px-5 py-4">
                       {user.isActive === false ? "Disabled" : "Enabled"}
                     </td>
-                    <td className="px-5 py-4 text-slate-500">
+                    <td className="px-5 py-4 text-muted-foreground">
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -264,8 +264,8 @@ export default function AdminUsersPage() {
                         }
                         className={
                           user.isActive === false
-                            ? "bg-emerald-700 text-white"
-                            : "border border-red-200 bg-white text-red-700"
+                            ? "bg-success text-primary-foreground"
+                            : "border border-destructive/30 bg-card text-destructive"
                         }
                         onClick={() => toggle.mutate({ user, isActive: user.isActive === false })}
                       >
@@ -277,14 +277,14 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
-          <div className="mt-5 flex items-center justify-between text-sm text-slate-600">
+          <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
             <span>
               {query.data.total} account{query.data.total === 1 ? "" : "s"}
             </span>
             <div className="flex gap-2">
               <Button
                 disabled={page <= 1}
-                className="border border-slate-300 bg-white"
+                className="border border-border bg-card"
                 onClick={() => setPage(page - 1)}
               >
                 Previous
@@ -294,7 +294,7 @@ export default function AdminUsersPage() {
               </span>
               <Button
                 disabled={page >= totalPages}
-                className="border border-slate-300 bg-white"
+                className="border border-border bg-card"
                 onClick={() => setPage(page + 1)}
               >
                 Next
@@ -317,22 +317,22 @@ function UserCard({
   pending: boolean;
 }) {
   return (
-    <article className="border border-amber-900/15 bg-white p-4">
+    <article className="border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{user.name ?? "Unnamed user"}</p>
-          <p className="mt-1 break-all text-xs text-slate-500">{user.email}</p>
+          <p className="mt-1 break-all text-xs text-muted-foreground">{user.email}</p>
         </div>
         <span className="text-xs font-semibold uppercase tracking-wider">{user.role}</span>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
+      <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm">
         <span>{user.isActive === false ? "Disabled" : "Enabled"}</span>
         <Button
           disabled={pending}
           className={
             user.isActive === false
-              ? "bg-emerald-700 text-white"
-              : "border border-red-200 bg-white text-red-700"
+              ? "bg-success text-primary-foreground"
+              : "border border-destructive/30 bg-card text-destructive"
           }
           onClick={() => toggle({ user, isActive: user.isActive === false })}
         >
