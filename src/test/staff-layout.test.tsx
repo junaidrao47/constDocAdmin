@@ -40,7 +40,8 @@ describe("staff route protection", () => {
     render(<StaffLayout><p>Private content</p></StaffLayout>);
 
     expect(screen.getByText("Private content")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Oversight" })).toBeInTheDocument();
+    // Rendered twice: once in the mobile nav and once in the desktop sidebar.
+    expect(screen.getAllByRole("link", { name: "Oversight" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: "Administration" })).not.toBeInTheDocument();
   });
 });
