@@ -17,3 +17,4 @@
 - Colours come only from tokens in `src/app/globals.css` (bg-primary, text-muted-foreground, bg-success/10, ...). Never hex or palette classes (amber-700, slate-500) in pages. The same tokens live in customer-portal; change both.
 - Money: `formatMoney(value, currency?)` from `src/lib/format.ts` (MXN, es-MX). Dates: `formatDate()` from the same file.
 - Statuses: `<StatusBadge status=... />` from `src/components/status-badge.tsx` covers document, quotation and invoice statuses.
+- Metadata: root `title`/`description` live in `src/app/layout.tsx` (`title` uses `{ default: "ConstDoc Admin", template: "%s · ConstDoc Admin" }`). `"use client"` pages can't export metadata.
