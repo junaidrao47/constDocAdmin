@@ -55,24 +55,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => configureApiTokens(null);
   }, [refresh, session]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    session,
-    isLoading,
-    refresh,
-    login: async (email, password) => {
-      const result = await loginRequest(email, password);
-      const nextSession = result;
-      setSession(nextSession);
-      window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
-      return nextSession;
-    },
-    logout: () => {
-      const refreshToken = session?.refreshToken;
-      setSession(null);
-      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      if (refreshToken) void logoutRequest(refreshToken).catch(() => undefined);
-    },
-  }), [isLoading, refresh, session]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      session,
+      isLoading,
+      refresh,
+      login: async (email, password) => {
+        const result = await loginRequest(email, password);
+        const nextSession = result;
+        setSession(nextSession);
+        window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+        return nextSession;
+      },
+      logout: () => {
+        const refreshToken = session?.refreshToken;
+        setSession(null);
+        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+        if (refreshToken) void logoutRequest(refreshToken).catch(() => undefined);
+      },
+    }),
+    [isLoading, refresh, session],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

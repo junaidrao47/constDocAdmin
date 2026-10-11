@@ -32,14 +32,44 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     { href: "/quotations", label: "Quotations", show: true },
   ].filter((item) => item.show);
 
-  return <div className="min-h-screen bg-[#f4f7f8] text-slate-900"><MobileNav items={navItems} />
+  return (
     <div className="min-h-screen bg-[#f4f7f8] text-slate-900">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-[#10252b] text-white lg:block">
-        <div className="border-b border-white/10 px-6 py-6"><p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">ConstDoc</p><p className="mt-1 text-sm text-white/60">Operations console</p></div>
-        <nav className="space-y-1 px-3 py-5">{navItems.map((item) => <Link className={`block border-l-2 px-3 py-2 text-sm ${pathname === item.href ? "border-cyan-300 bg-white/10 text-white" : "border-transparent text-white/60 hover:text-white"}`} href={item.href} key={item.href}>{item.label}</Link>)}</nav>
-        <div className="absolute bottom-0 w-full border-t border-white/10 p-5"><p className="truncate text-sm font-medium">{session.user.name ?? session.user.email}</p><p className="mt-1 text-xs uppercase tracking-wider text-cyan-300">{role}</p><button className="mt-5 text-xs text-white/60 hover:text-white" onClick={() => { logout(); router.replace("/staff/login"); }}>Sign out</button></div>
-      </aside>
-      <main className="min-h-screen lg:pl-64">{children}</main>
+      <MobileNav items={navItems} />
+      <div className="min-h-screen bg-[#f4f7f8] text-slate-900">
+        <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-[#10252b] text-white lg:block">
+          <div className="border-b border-white/10 px-6 py-6">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">ConstDoc</p>
+            <p className="mt-1 text-sm text-white/60">Operations console</p>
+          </div>
+          <nav className="space-y-1 px-3 py-5">
+            {navItems.map((item) => (
+              <Link
+                className={`block border-l-2 px-3 py-2 text-sm ${pathname === item.href ? "border-cyan-300 bg-white/10 text-white" : "border-transparent text-white/60 hover:text-white"}`}
+                href={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="absolute bottom-0 w-full border-t border-white/10 p-5">
+            <p className="truncate text-sm font-medium">
+              {session.user.name ?? session.user.email}
+            </p>
+            <p className="mt-1 text-xs uppercase tracking-wider text-cyan-300">{role}</p>
+            <button
+              className="mt-5 text-xs text-white/60 hover:text-white"
+              onClick={() => {
+                logout();
+                router.replace("/staff/login");
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </aside>
+        <main className="min-h-screen lg:pl-64">{children}</main>
+      </div>
     </div>
-  </div>;
+  );
 }

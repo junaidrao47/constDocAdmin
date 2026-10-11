@@ -41,7 +41,6 @@ describe("role-specific login", () => {
     await user.type(screen.getByLabelText(/password/i), "secret");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/staff"));
-
   });
 
   it("routes admins to the admin dashboard and rejects staff accounts there", async () => {

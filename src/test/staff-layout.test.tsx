@@ -21,23 +21,43 @@ describe("staff route protection", () => {
 
   it("redirects unauthenticated users to login", () => {
     useAuth.mockReturnValue({ session: null, isLoading: false, logout: vi.fn() });
-    render(<StaffLayout><p>Private content</p></StaffLayout>);
+    render(
+      <StaffLayout>
+        <p>Private content</p>
+      </StaffLayout>,
+    );
 
     expect(replace).toHaveBeenCalledWith("/staff/login");
     expect(screen.queryByText("Private content")).not.toBeInTheDocument();
   });
 
   it("redirects customer sessions to access denied", () => {
-    useAuth.mockReturnValue({ session: { user: { role: "customer", email: "customer@example.com" } }, isLoading: false, logout: vi.fn() });
-    render(<StaffLayout><p>Private content</p></StaffLayout>);
+    useAuth.mockReturnValue({
+      session: { user: { role: "customer", email: "customer@example.com" } },
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    render(
+      <StaffLayout>
+        <p>Private content</p>
+      </StaffLayout>,
+    );
 
     expect(replace).toHaveBeenCalledWith("/403");
     expect(screen.queryByText("Private content")).not.toBeInTheDocument();
   });
 
   it("shows manager navigation for an authenticated staff member", () => {
-    useAuth.mockReturnValue({ session: { user: { role: "manager", email: "manager@example.com" } }, isLoading: false, logout: vi.fn() });
-    render(<StaffLayout><p>Private content</p></StaffLayout>);
+    useAuth.mockReturnValue({
+      session: { user: { role: "manager", email: "manager@example.com" } },
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    render(
+      <StaffLayout>
+        <p>Private content</p>
+      </StaffLayout>,
+    );
 
     expect(screen.getByText("Private content")).toBeInTheDocument();
     // Rendered twice: once in the mobile nav and once in the desktop sidebar.

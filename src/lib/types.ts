@@ -1,12 +1,7 @@
 export type UserRole = "customer" | "agent" | "manager" | "admin";
 
 export type DocumentStatus =
-  | "pending"
-  | "under_review"
-  | "approved"
-  | "rejected"
-  | "expiring_soon"
-  | "expired";
+  "pending" | "under_review" | "approved" | "rejected" | "expiring_soon" | "expired";
 
 export interface User {
   id: string;
@@ -18,7 +13,12 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface UserList { items: User[]; total: number; page: number; pageSize: number; }
+export interface UserList {
+  items: User[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export interface Session {
   user: User;
@@ -48,5 +48,16 @@ export interface ApiErrorShape {
   message: string;
   status: number;
 }
-export type QuotationStatus = "draft" | "sent" | "under_review" | "accepted" | "rejected" | "expired";
-export interface Quotation { id: string; customerId: string; totalPrice: string; status: QuotationStatus; workerCount: number; expiresAt: string | null; createdAt: string; customer?: User; rejectionReason?: string | null; }
+export type QuotationStatus =
+  "draft" | "sent" | "under_review" | "accepted" | "rejected" | "expired";
+export interface Quotation {
+  id: string;
+  customerId: string;
+  totalPrice: string;
+  status: QuotationStatus;
+  workerCount: number;
+  expiresAt: string | null;
+  createdAt: string;
+  customer?: User;
+  rejectionReason?: string | null;
+}
