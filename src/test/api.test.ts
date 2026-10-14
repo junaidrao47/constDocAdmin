@@ -1,5 +1,44 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest, configureApiTokens } from "@/lib/api";
+import { ApiError, apiRequest, configureApiTokens, errorMessage } from "@/lib/api";
+
+describe("errorMessage", () => {
+  it("shows the API's own wording, which is written for a person", () => {
+    const refused = new ApiError("Cannot move a quotation from draft to accepted", 409);
+    expect(errorMessage(refused, "Something went wrong.")).toBe(
+      "Cannot move a quotation from draft to accepted",
+    );
+  });
+
+  it("hides a transport error behind the caller's wording", () => {
+    // A dead API throws TypeError("Failed to fetch"). Showing that to a user puts the
+    // browser's words in the UI; the real one stays in the console.
+    expect(errorMessage(new TypeError("Failed to fetch"), "Unable to load quotations.")).toBe(
+      "Unable to load quotations.",
+    );
+    expect(errorMessage(new Error("socket hang up"), "Unable to load quotations.")).toBe(
+      "Unable to load quotations.",
+    );
+  });
+
+  it("falls back for anything that is not an Error at all", () => {
+    expect(errorMessage({ code: 500 }, "Unable to load quotations.")).toBe(
+      "Unable to load quotations.",
+    );
+    expect(errorMessage(undefined, "Unable to load quotations.")).toBe(
+      "Unable to load quotations.",
+    );
+  });
+});
+
+describe("ApiError", () => {
+  it("carries the API's per-field messages so a form can place them", () => {
+    const invalid = new ApiError("email: must be a valid email", 400, {
+      email: ["must be a valid email"],
+    });
+    expect(invalid.fieldErrors?.email).toEqual(["must be a valid email"]);
+    expect(invalid.status).toBe(400);
+  });
+});
 
 describe("API client", () => {
   afterEach(() => {

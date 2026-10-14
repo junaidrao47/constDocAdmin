@@ -3,13 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DataTable, type Column } from "@/components/data-table";
+import { ApiError } from "@/lib/api";
 import type { ListQueryResult } from "@/lib/use-list-query";
-
-vi.mock("@/lib/api", () => ({
-  ApiError: class ApiError extends Error {},
-  errorMessage: (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
-}));
 
 interface Row {
   id: string;
@@ -88,9 +83,12 @@ describe("DataTable", () => {
 
   it("shows the error state and retries through refetch", async () => {
     const user = userEvent.setup();
-    const resolved = renderTable({ isError: true, error: new Error("Network unreachable") });
+    const resolved = renderTable({
+      isError: true,
+      error: new ApiError("The quotation service is unavailable", 503),
+    });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Network unreachable");
+    expect(screen.getByRole("alert")).toHaveTextContent("The quotation service is unavailable");
     // No table at all in the error state: a half-rendered table with an error above it
     // is how a stale page gets mistaken for a live one.
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
@@ -99,9 +97,23 @@ describe("DataTable", () => {
     expect(resolved.refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to the noun when the error carries no message", () => {
-    renderTable({ isError: true, error: { weird: true } });
+  it("falls back to the noun for a transport error or a non-Error", () => {
+    // A dead API throws TypeError("Failed to fetch"); that is the browser talking to a
+    // developer, and it reached the UI until errorMessage stopped passing it through.
+    const { unmount } = render(
+      <DataTable
+        columns={columns}
+        state={state({ isError: true, error: new TypeError("Failed to fetch") })}
+        rowKey={(row) => row.id}
+        emptyMessage="none"
+        noun="quotation"
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load quotations.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Failed to fetch");
+    unmount();
 
+    renderTable({ isError: true, error: { weird: true } });
     expect(screen.getByRole("alert")).toHaveTextContent("Unable to load quotations.");
   });
 

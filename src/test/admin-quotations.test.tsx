@@ -20,8 +20,9 @@ const { apiRequest, FakeApiError } = vi.hoisted(() => {
 vi.mock("@/lib/api", () => ({
   apiRequest,
   ApiError: FakeApiError,
+  // Mirrors the real helper: only an ApiError contributes its own message.
   errorMessage: (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
+    error instanceof FakeApiError ? error.message : fallback,
 }));
 
 const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));

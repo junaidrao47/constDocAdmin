@@ -20,11 +20,17 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
-/** The message to show a user for any thrown value. One place, so no screen invents its own. */
+/**
+ * The message to show a user for any thrown value. One place, so no screen invents its own.
+ *
+ * Only an `ApiError` contributes its own text, because that text came from the API and is
+ * written for a person — "Cannot move a quotation from draft to accepted". Every other
+ * Error gets the caller's fallback: a dead API throws a TypeError whose message is
+ * "Failed to fetch", which is the browser talking to a developer, not to the user.
+ * The original is still in the console.
+ */
 export function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return fallback;
+  return error instanceof ApiError ? error.message : fallback;
 }
 
 type TokenStore = {

@@ -4,12 +4,16 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminUsersPage from "@/app/(admin)/admin/users/page";
 
-const { apiRequest } = vi.hoisted(() => ({ apiRequest: vi.fn() }));
+const { apiRequest, FakeApiError } = vi.hoisted(() => {
+  class FakeApiError extends Error {}
+  return { apiRequest: vi.fn(), FakeApiError };
+});
 vi.mock("@/lib/api", () => ({
   apiRequest,
-  ApiError: class ApiError extends Error {},
+  ApiError: FakeApiError,
+  // Mirrors the real helper: only an ApiError contributes its own message.
   errorMessage: (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback,
+    error instanceof FakeApiError ? error.message : fallback,
 }));
 
 const admin = {
