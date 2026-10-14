@@ -5,11 +5,26 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/a
 export class ApiError extends Error implements ApiErrorShape {
   status: number;
 
-  constructor(message: string, status: number) {
+  /**
+   * Per-field messages from the API's zod validation, when it sent any.
+   * `FormDialog` places these on their own input; without them a 400 collapses into
+   * one sentence and the user has to guess which field was wrong.
+   */
+  fieldErrors?: Record<string, string[]>;
+
+  constructor(message: string, status: number, fieldErrors?: Record<string, string[]>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.fieldErrors = fieldErrors;
   }
+}
+
+/** The message to show a user for any thrown value. One place, so no screen invents its own. */
+export function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
 type TokenStore = {
@@ -42,7 +57,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
         : typeof payload?.error === "string"
           ? payload.error
           : "The API request failed.";
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, fieldErrors);
   }
 
   return (payload && "data" in payload ? payload.data : payload) as T;
