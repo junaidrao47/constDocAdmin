@@ -27,8 +27,19 @@ export interface UseListQueryOptions<T> {
   /**
    * In-memory narrowing, client mode only. Applied before paging, so it narrows
    * `total` rather than punching holes in one page.
+   *
+   * Pass `clientFilterKey` alongside it, or a narrowing applied while the user is on a
+   * later page will clamp them to the last page instead of returning them to the first.
    */
   clientFilter?: (row: T) => boolean;
+  /**
+   * A stable description of what `clientFilter` currently matches — typically the search
+   * term. Changing it resets to page 1, exactly as changing a server filter does.
+   *
+   * It exists because `clientFilter` is usually an inline arrow whose identity changes
+   * every render, so the function itself cannot be compared.
+   */
+  clientFilterKey?: string;
   enabled?: boolean;
 }
 
@@ -53,6 +64,7 @@ export function useListQuery<T>(options: UseListQueryOptions<T>): ListQueryResul
     sort: initialSort,
     filters,
     clientFilter,
+    clientFilterKey,
     enabled,
   } = options;
   const resolvedPageSize = pageSize ?? 25;
@@ -62,7 +74,7 @@ export function useListQuery<T>(options: UseListQueryOptions<T>): ListQueryResul
 
   // Page 2 of a filter that now matches three rows is an empty screen that reads as
   // "no data". Reset to the first page whenever the result set changes underneath us.
-  const signature = `${JSON.stringify(filters ?? {})}|${sort ?? ""}`;
+  const signature = `${JSON.stringify(filters ?? {})}|${sort ?? ""}|${clientFilterKey ?? ""}`;
   const previousSignature = useRef(signature);
   if (previousSignature.current !== signature) {
     previousSignature.current = signature;
@@ -83,10 +95,12 @@ export function useListQuery<T>(options: UseListQueryOptions<T>): ListQueryResul
     enabled,
   });
 
-  const list = useMemo<NormalisedList<T>>(() => {
-    if (query.data === undefined) {
-      return { rows: [], total: 0, page, pageSize: resolvedPageSize, totalPages: 0 };
-    }
+  /**
+   * Server mode trusts the response. Client mode filters and sorts the whole list here;
+   * the page slice is taken afterwards, once the page has been clamped into range.
+   */
+  const resolved = useMemo(() => {
+    if (query.data === undefined) return null;
 
     const normalised = normaliseList<T>(query.data, {
       page,
@@ -94,23 +108,43 @@ export function useListQuery<T>(options: UseListQueryOptions<T>): ListQueryResul
       sort,
       filters,
     });
-    if (mode === "server") return normalised;
+    if (mode === "server") return { server: normalised, rows: null, total: 0 };
 
     const filtered = clientFilter ? normalised.rows.filter(clientFilter) : normalised.rows;
-    const ordered = sortRows(filtered, sort);
-    const start = (page - 1) * resolvedPageSize;
-
-    return {
-      rows: ordered.slice(start, start + resolvedPageSize),
-      total: filtered.length,
-      page,
-      pageSize: resolvedPageSize,
-      totalPages: Math.ceil(filtered.length / resolvedPageSize),
-    };
+    return { server: null, rows: sortRows(filtered, sort), total: filtered.length };
     // `filters` is only read for normalisation defaults; its identity changes every
     // render, so the stable signature stands in for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data, mode, page, resolvedPageSize, sort, clientFilter, signature]);
+
+  const totalPages = resolved
+    ? (resolved.server?.totalPages ?? Math.ceil(resolved.total / resolvedPageSize))
+    : 0;
+
+  /**
+   * A result set that shrank beneath the current page leaves an empty table — and
+   * because the pager hides itself at a single page, no way back to the rows. Clamping
+   * catches every cause: an in-memory filter narrowing, rows deleted by someone else,
+   * a server page count that fell.
+   */
+  if (totalPages > 0 && page > totalPages) {
+    setPage(totalPages);
+  }
+
+  const list: NormalisedList<T> = (() => {
+    if (!resolved) return { rows: [], total: 0, page, pageSize: resolvedPageSize, totalPages: 0 };
+    if (resolved.server) return resolved.server;
+
+    const safePage = Math.min(page, Math.max(1, totalPages));
+    const start = (safePage - 1) * resolvedPageSize;
+    return {
+      rows: (resolved.rows ?? []).slice(start, start + resolvedPageSize),
+      total: resolved.total,
+      page: safePage,
+      pageSize: resolvedPageSize,
+      totalPages,
+    };
+  })();
 
   return {
     ...list,

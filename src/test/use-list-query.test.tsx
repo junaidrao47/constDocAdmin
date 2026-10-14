@@ -155,6 +155,59 @@ describe("useListQuery in client mode", () => {
     await waitFor(() => expect(result.current.rows).toHaveLength(1));
   });
 
+  it("clamps a page that the result set shrank beneath", async () => {
+    const { result, rerender } = renderHook(
+      ({ activeOnly }: { activeOnly: boolean }) =>
+        useListQuery<Location>({
+          key: "locations",
+          path: "/admin/locations",
+          mode: "client",
+          pageSize: 2,
+          clientFilter: activeOnly ? (row) => row.multiplier > 1.14 : undefined,
+        }),
+      { wrapper, initialProps: { activeOnly: false } },
+    );
+
+    await waitFor(() => expect(result.current.totalPages).toBe(3));
+    act(() => result.current.setPage(3));
+    await waitFor(() => expect(result.current.page).toBe(3));
+
+    // Narrowing to two rows leaves one page. Without clamping the user sits on page 3
+    // of a one-page result — an empty table, and the pager hides itself at one page, so
+    // there is no button left to get back to the rows.
+    rerender({ activeOnly: true });
+
+    await waitFor(() => expect(result.current.totalPages).toBe(1));
+    expect(result.current.page).toBe(1);
+    expect(result.current.rows).toHaveLength(2);
+    expect(result.current.total).toBe(2);
+  });
+
+  it("resets to page 1 when clientFilterKey changes", async () => {
+    const { result, rerender } = renderHook(
+      ({ term }: { term: string }) =>
+        useListQuery<Location>({
+          key: "locations",
+          path: "/admin/locations",
+          mode: "client",
+          pageSize: 2,
+          clientFilterKey: term,
+          clientFilter: (row) => row.city.toLowerCase().includes(term.toLowerCase()),
+        }),
+      { wrapper, initialProps: { term: "" } },
+    );
+
+    await waitFor(() => expect(result.current.totalPages).toBe(3));
+    act(() => result.current.setPage(2));
+    await waitFor(() => expect(result.current.page).toBe(2));
+
+    // A search is a filter; typing one belongs on page 1, not clamped to the last page.
+    rerender({ term: "a" });
+
+    await waitFor(() => expect(result.current.page).toBe(1));
+    expect(result.current.rows.every((row) => row.city.toLowerCase().includes("a"))).toBe(true);
+  });
+
   it("resets to page 1 when the sort changes", async () => {
     const { result } = renderHook(
       () =>
@@ -206,6 +259,47 @@ describe("useListQuery in server mode", () => {
     expect(apiRequest).toHaveBeenCalledWith("/admin/quotations?page=2&pageSize=2&sort=-createdAt");
     // The server's total wins in server mode — it knows about rows this page never saw.
     expect(result.current.total).toBe(3);
+  });
+
+  it("recovers when the server's page count falls beneath the current page", async () => {
+    // Someone else deletes rows while this page is open. The server now reports one
+    // page, so the pager hides itself — without a clamp the user is stranded on an
+    // empty page 2 with no control left to escape it.
+    let shrunk = false;
+    apiRequest.mockImplementation((path: string) => {
+      const onPageTwo = path.includes("page=2");
+      if (!shrunk) {
+        return Promise.resolve({
+          data: onPageTwo ? [{ id: "q-2" }] : [{ id: "q-1" }],
+          pagination: { page: onPageTwo ? 2 : 1, pageSize: 1, total: 2, totalPages: 2 },
+        });
+      }
+      return Promise.resolve({
+        data: onPageTwo ? [] : [{ id: "q-1" }],
+        pagination: { page: onPageTwo ? 2 : 1, pageSize: 1, total: 1, totalPages: 1 },
+      });
+    });
+
+    const { result } = renderHook(
+      () =>
+        useListQuery<{ id: string }>({
+          key: "quotations",
+          path: "/admin/quotations",
+          pageSize: 1,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.totalPages).toBe(2));
+    act(() => result.current.setPage(2));
+    await waitFor(() => expect(result.current.rows.map((row) => row.id)).toEqual(["q-2"]));
+
+    shrunk = true;
+    act(() => result.current.refetch());
+
+    await waitFor(() => expect(result.current.page).toBe(1));
+    await waitFor(() => expect(result.current.rows.map((row) => row.id)).toEqual(["q-1"]));
+    expect(result.current.totalPages).toBe(1);
   });
 
   it("keeps the previous rows on screen while the next page loads", async () => {
