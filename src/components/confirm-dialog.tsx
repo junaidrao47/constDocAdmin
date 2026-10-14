@@ -23,6 +23,12 @@ export interface ConfirmDialogProps {
   isPending?: boolean;
   /** A failed attempt. Rendered in place; the dialog deliberately stays open. */
   error?: unknown;
+  /**
+   * Optional extra input gathered alongside the confirmation — a rejection reason, a
+   * status-change note. Kept here rather than in a second dialog so the user types the
+   * reason and confirms in one step.
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -42,6 +48,7 @@ export function ConfirmDialog({
   onConfirm,
   isPending = false,
   error,
+  children,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -50,6 +57,7 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         {error !== undefined && error !== null && (
           <p
             role="alert"

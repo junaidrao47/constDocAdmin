@@ -26,6 +26,12 @@ export interface Session {
   refreshToken: string;
 }
 
+/** The `{data, pagination}` shape documents, invoices and paginated quotations return. */
+export interface Paginated<T> {
+  data: T[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
 export interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -48,8 +54,20 @@ export interface ApiErrorShape {
   message: string;
   status: number;
 }
+/**
+ * All eight values the API's `quotation_status` can hold. This listed six until
+ * now, so a converted or cancelled quotation was an unhandled status.
+ * Mirrors `QuotationStatus` in apps/api/src/modules/quotations/quotation-status.ts.
+ */
 export type QuotationStatus =
-  "draft" | "sent" | "under_review" | "accepted" | "rejected" | "expired";
+  | "draft"
+  | "sent"
+  | "under_review"
+  | "accepted"
+  | "rejected"
+  | "expired"
+  | "converted"
+  | "cancelled";
 export interface Quotation {
   id: string;
   customerId: string;
