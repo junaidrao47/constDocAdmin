@@ -65,6 +65,32 @@ export default function AdminUsersPage() {
     onError: (error: unknown) =>
       setFeedback(error instanceof ApiError ? error.message : "Could not update access."),
   });
+  /**
+   * How many admins can still sign in, asked separately from the visible list.
+   *
+   * The guard below used `query.data.total`, which is the *filtered* count: with a
+   * search or a role filter applied it could read 1 for any single row, and with no
+   * filter it was the total number of users rather than of admins. Either way the
+   * last admin could be disabled and nobody could get back into the admin portal.
+   *
+   * `pageSize=1` because only the total is wanted. The key shares the "admin-users"
+   * prefix, so the invalidation after a toggle refetches this too.
+   */
+  const activeAdmins = useQuery({
+    queryKey: ["admin-users", "active-admin-count"],
+    queryFn: () => apiRequest<UserList>("/admin/users?role=admin&isActive=true&page=1&pageSize=1"),
+  });
+
+  /**
+   * True while this user is the only admin left who can sign in — and also while the
+   * count is still unknown, because guessing wrong in the permissive direction locks
+   * the organisation out.
+   */
+  function isLastActiveAdmin(user: User): boolean {
+    if (user.role !== "admin" || user.isActive === false) return false;
+    return activeAdmins.data === undefined || activeAdmins.data.total <= 1;
+  }
+
   const totalPages = Math.max(1, Math.ceil((query.data?.total ?? 0) / pageSize));
   function submitCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -226,6 +252,7 @@ export default function AdminUsersPage() {
                 user={user}
                 toggle={toggle.mutate}
                 pending={toggle.isPending}
+                isLastActiveAdmin={isLastActiveAdmin(user)}
               />
             ))}
           </div>
@@ -256,11 +283,11 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Button
-                        disabled={
-                          toggle.isPending ||
-                          (user.role === "admin" &&
-                            user.isActive !== false &&
-                            query.data.total === 1)
+                        disabled={toggle.isPending || isLastActiveAdmin(user)}
+                        title={
+                          isLastActiveAdmin(user)
+                            ? "The last active admin cannot be disabled."
+                            : undefined
                         }
                         className={
                           user.isActive === false
@@ -311,10 +338,13 @@ function UserCard({
   user,
   toggle,
   pending,
+  isLastActiveAdmin,
 }: {
   user: User;
   toggle: (input: { user: User; isActive: boolean }) => void;
   pending: boolean;
+  /** The card had no guard at all, so on a phone the last admin was always disableable. */
+  isLastActiveAdmin: boolean;
 }) {
   return (
     <article className="border border-border bg-card p-4">
@@ -328,7 +358,8 @@ function UserCard({
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm">
         <span>{user.isActive === false ? "Disabled" : "Enabled"}</span>
         <Button
-          disabled={pending}
+          disabled={pending || isLastActiveAdmin}
+          title={isLastActiveAdmin ? "The last active admin cannot be disabled." : undefined}
           className={
             user.isActive === false
               ? "bg-success text-primary-foreground"
