@@ -28,7 +28,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/invoices", label: "Invoices", ready: false },
   { href: "/admin/documents", label: "Documents", ready: false },
   { href: "/admin/customers", label: "Customers", ready: false },
-  { href: "/admin/packages", label: "Packages", ready: false },
+  { href: "/admin/packages", label: "Packages", ready: true },
   { href: "/admin/services", label: "Services", ready: false },
   { href: "/admin/industries", label: "Industries", ready: false },
   { href: "/admin/worker-ranges", label: "Worker ranges", ready: false },

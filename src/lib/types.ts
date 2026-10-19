@@ -54,6 +54,41 @@ export interface ApiErrorShape {
   message: string;
   status: number;
 }
+
+/** A pricing service, as `GET /admin/services` serialises it. */
+export interface Service {
+  id: string;
+  name: string;
+  description: string | null;
+  basePrice: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** The trimmed service shape embedded in a package's `services` array. */
+export interface PackageServiceRef {
+  id: string;
+  name: string;
+  description: string | null;
+  basePrice: number;
+}
+
+/** A package, as `GET /admin/packages` serialises it. `price` is a number, not a string. */
+export interface Package {
+  id: string;
+  name: string;
+  type: string;
+  price: number;
+  durationDays: number;
+  description: string | null;
+  isActive: boolean;
+  isFeatured: boolean;
+  sortOrder: number;
+  services: PackageServiceRef[];
+  createdAt: string;
+  updatedAt: string;
+}
 /**
  * All eight values the API's `quotation_status` can hold. This listed six until
  * now, so a converted or cancelled quotation was an unhandled status.
