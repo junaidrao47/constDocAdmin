@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -75,14 +76,16 @@ export function LoginForm({ audience }: { audience: LoginAudience }) {
           }
         >
           <div className="mb-10 border-b border-border pb-5">
-            <p
-              className={
-                isAdmin
-                  ? "text-xs font-bold uppercase tracking-[0.2em] text-primary"
-                  : "text-xs font-bold uppercase tracking-[0.2em] text-primary"
-              }
-            >
-              ConstDoc / {isAdmin ? "control" : "operations"}
+            <Image
+              src="/logo.png"
+              alt="Grupo G2H — Servicios Integrales"
+              width={960}
+              height={429}
+              priority
+              className="mb-6 h-12 w-auto"
+            />
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+              Grupo G2H / {isAdmin ? "control" : "operations"}
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight">
               {isAdmin ? "Administrator sign in" : "Staff sign in"}

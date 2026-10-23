@@ -3,12 +3,21 @@ import { cn } from "@/lib/utils";
 
 type Tone = "success" | "warning" | "danger" | "neutral";
 
-/** One label + colour per status across documents, quotations and invoices. */
+/**
+ * Label + colour per status across documents, quotations and invoices.
+ *
+ * The *set* of document statuses and the allowed transitions are owned by the API
+ * (`GET /documents/statuses`) and drive the action buttons — never a hardcoded list.
+ * Colours are not part of that contract, so this presentation map (label + tone) stays
+ * local; the labels are English today and map 1:1 to the contract's i18n keys for the
+ * day next-intl lands. An unknown status still renders via the humanised fallback below.
+ */
 const STATUSES: Record<string, { label: string; tone: Tone }> = {
   // documents
   pending: { label: "Pending", tone: "neutral" },
   under_review: { label: "Under review", tone: "warning" },
   approved: { label: "Approved", tone: "success" },
+  submitted_to_government: { label: "Submitted to government", tone: "warning" },
   rejected: { label: "Rejected", tone: "danger" },
   expiring_soon: { label: "Expiring soon", tone: "warning" },
   expired: { label: "Expired", tone: "danger" },

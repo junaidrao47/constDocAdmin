@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,17 +15,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import type { Package, Service } from "@/lib/types";
+import type { Category, Package, Service } from "@/lib/types";
 import { useListQuery } from "@/lib/use-list-query";
 
 // Mirrors the server's PackageSchema bounds so a bad value is caught before the round
 // trip; the server still validates, and its field errors land inline via FormDialog.
 // isActive is deliberately absent — retiring is the separate Deactivate action.
 const packageFormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(150, "Name is too long"),
+  categoryId: z.string().uuid("A category is required"),
+  nameEn: z.string().trim().min(1, "English name is required").max(150, "Name is too long"),
+  nameEs: z.string().trim().min(1, "Spanish name is required").max(150, "Name is too long"),
   type: z.string().trim().min(1, "Type is required").max(50, "Type is too long"),
   price: z
     .number({ message: "Enter a price" })
@@ -35,7 +45,8 @@ const packageFormSchema = z.object({
     .int("Duration must be a whole number")
     .min(1, "Duration must be at least 1 day")
     .max(3650, "Duration cannot exceed 3650 days"),
-  description: z.string().trim().max(2000, "Description is too long"),
+  descriptionEn: z.string().trim().max(2000, "Description is too long"),
+  descriptionEs: z.string().trim().max(2000, "Description is too long"),
   sortOrder: z
     .number({ message: "Enter a sort order" })
     .int("Sort order must be a whole number")
@@ -48,11 +59,14 @@ const packageFormSchema = z.object({
 type PackageFormValues = z.infer<typeof packageFormSchema>;
 
 const EMPTY_FORM: PackageFormValues = {
-  name: "",
+  categoryId: "",
+  nameEn: "",
+  nameEs: "",
   type: "",
   price: 0,
   durationDays: 30,
-  description: "",
+  descriptionEn: "",
+  descriptionEs: "",
   sortOrder: 0,
   isFeatured: false,
   serviceIds: [],
@@ -60,15 +74,22 @@ const EMPTY_FORM: PackageFormValues = {
 
 function toFormValues(pkg: Package): PackageFormValues {
   return {
-    name: pkg.name,
+    categoryId: pkg.categoryId ?? "",
+    nameEn: pkg.nameEn ?? pkg.name,
+    nameEs: pkg.nameEs ?? pkg.name,
     type: pkg.type,
     price: pkg.price,
     durationDays: pkg.durationDays,
-    description: pkg.description ?? "",
+    descriptionEn: pkg.descriptionEn ?? pkg.description ?? "",
+    descriptionEs: pkg.descriptionEs ?? "",
     sortOrder: pkg.sortOrder,
     isFeatured: pkg.isFeatured,
     serviceIds: pkg.services.map((service) => service.id),
   };
+}
+
+function nullIfBlank(value: string): string | null {
+  return value.trim() ? value.trim() : null;
 }
 
 export default function AdminPackagesPage() {
@@ -77,6 +98,7 @@ export default function AdminPackagesPage() {
   const [showForm, setShowForm] = useState(false);
   const [statusTarget, setStatusTarget] = useState<Package | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Package | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // A bare array with neither pagination nor sort server-side, so client mode: fetch once,
   // sort name/price in memory.
@@ -84,6 +106,8 @@ export default function AdminPackagesPage() {
     key: "admin-packages",
     path: "/admin/packages",
     mode: "client",
+    clientFilter: categoryFilter === "all" ? undefined : (row) => row.categoryId === categoryFilter,
+    clientFilterKey: categoryFilter,
   });
 
   // Only active services can be attached — the API rejects inactive ids with a 400 — so
@@ -93,6 +117,15 @@ export default function AdminPackagesPage() {
     queryFn: () => apiRequest<Service[]>("/admin/services?isActive=true"),
   });
 
+  const categories = useQuery({
+    queryKey: ["admin-categories"],
+    queryFn: () => apiRequest<Category[]>("/admin/categories"),
+  });
+  const categoryName = (id: string | null | undefined) =>
+    categories.data?.find((c) => c.id === id)?.nameEn ?? "—";
+  const activeCategories = (categories.data ?? []).filter((c) => c.isActive);
+  const hasCategories = (categories.data ?? []).length > 0;
+
   const form = useForm<PackageFormValues>({
     resolver: zodResolver(packageFormSchema),
     defaultValues: EMPTY_FORM,
@@ -100,14 +133,19 @@ export default function AdminPackagesPage() {
 
   const save = useMutation({
     mutationFn: (values: PackageFormValues) => {
+      // `name` is the backend's canonical unique key; it tracks the English name.
       const body = JSON.stringify({
-        name: values.name,
+        name: values.nameEn,
+        nameEn: values.nameEn,
+        nameEs: values.nameEs,
         type: values.type,
         price: values.price,
         durationDays: values.durationDays,
         serviceIds: values.serviceIds,
-        // "" would persist an empty string; the column is nullable, so send null.
-        description: values.description.trim() ? values.description.trim() : null,
+        categoryId: values.categoryId,
+        description: nullIfBlank(values.descriptionEn),
+        descriptionEn: nullIfBlank(values.descriptionEn),
+        descriptionEs: nullIfBlank(values.descriptionEs),
         sortOrder: values.sortOrder,
         isFeatured: values.isFeatured,
       });
@@ -172,13 +210,19 @@ export default function AdminPackagesPage() {
       header: "Name",
       cell: (row) => (
         <>
-          <p className="font-medium">{row.name}</p>
+          <p className="font-medium">{row.nameEn ?? row.name}</p>
           {row.description && (
             <p className="line-clamp-1 text-xs text-muted-foreground">{row.description}</p>
           )}
         </>
       ),
       sortKey: "name",
+    },
+    {
+      id: "category",
+      header: "Category",
+      cell: (row) => categoryName(row.categoryId),
+      hideBelow: "md",
     },
     { id: "type", header: "Type", cell: (row) => row.type, hideBelow: "md" },
     {
@@ -192,7 +236,7 @@ export default function AdminPackagesPage() {
       id: "duration",
       header: "Duration",
       cell: (row) => `${row.durationDays} days`,
-      hideBelow: "md",
+      hideBelow: "lg",
     },
     {
       id: "status",
@@ -202,19 +246,6 @@ export default function AdminPackagesPage() {
           {row.isActive ? "Active" : "Retired"}
         </Badge>
       ),
-    },
-    {
-      id: "featured",
-      header: "Featured",
-      cell: (row) =>
-        row.isFeatured ? (
-          <span aria-label="Featured">★</span>
-        ) : (
-          <span aria-hidden className="text-muted-foreground">
-            —
-          </span>
-        ),
-      hideBelow: "lg",
     },
     {
       id: "services",
@@ -233,6 +264,25 @@ export default function AdminPackagesPage() {
         description="Create and price the subscription packages customers can choose from."
         actions={<Button onClick={openCreate}>New package</Button>}
       />
+
+      {hasCategories && (
+        <div className="mb-5 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Category</span>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-56" aria-label="Filter by category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {(categories.data ?? []).map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <DataTable
         columns={columns}
@@ -273,7 +323,7 @@ export default function AdminPackagesPage() {
         open={showForm}
         onOpenChange={(open) => !open && closeForm()}
         title={editing ? "Edit package" : "New package"}
-        description="Services, pricing and visibility for a subscription package."
+        description="Category, services, pricing and visibility for a subscription package."
         form={form}
         onSubmit={(values) => save.mutate(values)}
         submitLabel={editing ? "Save changes" : "Create package"}
@@ -281,24 +331,70 @@ export default function AdminPackagesPage() {
         error={save.error ?? undefined}
       >
         <div className="grid gap-1.5">
-          <label className="text-sm font-medium" htmlFor="package-name">
-            Name
+          <label className="text-sm font-medium" htmlFor="package-category">
+            Category
           </label>
-          <Input id="package-name" {...form.register("name")} />
-          {form.formState.errors.name && (
-            <span className="text-xs text-destructive">{form.formState.errors.name.message}</span>
+          {hasCategories ? (
+            <Controller
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <SelectTrigger id="package-category">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.nameEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No categories exist yet.{" "}
+              <Link href="/admin/categories" className="font-medium text-primary underline">
+                Create a category first
+              </Link>
+              .
+            </p>
           )}
+          {form.formState.errors.categoryId && (
+            <span className="text-xs text-destructive">
+              {form.formState.errors.categoryId.message}
+            </span>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium" htmlFor="package-name-en">
+              Name (English)
+            </label>
+            <Input id="package-name-en" {...form.register("nameEn")} />
+            {form.formState.errors.nameEn && (
+              <span className="text-xs text-destructive">{form.formState.errors.nameEn.message}</span>
+            )}
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium" htmlFor="package-name-es">
+              Name (Spanish)
+            </label>
+            <Input id="package-name-es" {...form.register("nameEs")} />
+            {form.formState.errors.nameEs && (
+              <span className="text-xs text-destructive">{form.formState.errors.nameEs.message}</span>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-1.5">
           <label className="text-sm font-medium" htmlFor="package-type">
             Type
           </label>
-          <Input
-            id="package-type"
-            placeholder="e.g. standard, premium"
-            {...form.register("type")}
-          />
+          <Input id="package-type" placeholder="e.g. standard, premium" {...form.register("type")} />
           {form.formState.errors.type && (
             <span className="text-xs text-destructive">{form.formState.errors.type.message}</span>
           )}
@@ -317,9 +413,7 @@ export default function AdminPackagesPage() {
               {...form.register("price", { valueAsNumber: true })}
             />
             {form.formState.errors.price && (
-              <span className="text-xs text-destructive">
-                {form.formState.errors.price.message}
-              </span>
+              <span className="text-xs text-destructive">{form.formState.errors.price.message}</span>
             )}
           </div>
           <div className="grid gap-1.5">
@@ -341,16 +435,19 @@ export default function AdminPackagesPage() {
           </div>
         </div>
 
-        <div className="grid gap-1.5">
-          <label className="text-sm font-medium" htmlFor="package-description">
-            Description
-          </label>
-          <Textarea id="package-description" rows={3} {...form.register("description")} />
-          {form.formState.errors.description && (
-            <span className="text-xs text-destructive">
-              {form.formState.errors.description.message}
-            </span>
-          )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium" htmlFor="package-desc-en">
+              Description (English)
+            </label>
+            <Textarea id="package-desc-en" rows={2} {...form.register("descriptionEn")} />
+          </div>
+          <div className="grid gap-1.5">
+            <label className="text-sm font-medium" htmlFor="package-desc-es">
+              Description (Spanish)
+            </label>
+            <Textarea id="package-desc-es" rows={2} {...form.register("descriptionEs")} />
+          </div>
         </div>
 
         <div className="grid gap-1.5">
@@ -389,7 +486,7 @@ export default function AdminPackagesPage() {
                             )
                           }
                         />
-                        {service.name}
+                        {service.nameEn ?? service.name}
                       </label>
                     );
                   })}
@@ -451,16 +548,14 @@ export default function AdminPackagesPage() {
           title={statusTarget.isActive ? "Retire this package?" : "Restore this package?"}
           description={
             statusTarget.isActive
-              ? `${statusTarget.name} will be hidden from the public catalogue. Existing subscriptions keep it.`
-              : `${statusTarget.name} will return to the public catalogue.`
+              ? `${statusTarget.nameEn ?? statusTarget.name} will be hidden from the public catalogue. Existing subscriptions keep it.`
+              : `${statusTarget.nameEn ?? statusTarget.name} will return to the public catalogue.`
           }
           confirmLabel={statusTarget.isActive ? "Deactivate" : "Restore"}
           variant={statusTarget.isActive ? "destructive" : "default"}
           isPending={setStatus.isPending}
           error={setStatus.error ?? undefined}
-          onConfirm={() =>
-            setStatus.mutate({ pkg: statusTarget, isActive: !statusTarget.isActive })
-          }
+          onConfirm={() => setStatus.mutate({ pkg: statusTarget, isActive: !statusTarget.isActive })}
         />
       )}
 
@@ -469,7 +564,7 @@ export default function AdminPackagesPage() {
           open
           onOpenChange={(open) => !open && setDeleteTarget(null)}
           title="Delete this package?"
-          description={`${deleteTarget.name} will be permanently removed. This cannot be undone.`}
+          description={`${deleteTarget.nameEn ?? deleteTarget.name} will be permanently removed. This cannot be undone.`}
           confirmLabel="Delete package"
           variant="destructive"
           isPending={remove.isPending}

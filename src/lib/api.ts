@@ -6,17 +6,33 @@ export class ApiError extends Error implements ApiErrorShape {
   status: number;
 
   /**
+   * Stable machine code from the API envelope (e.g. "VALIDATION_FAILED",
+   * "INVALID_STATUS_TRANSITION"). A screen can branch on this rather than matching
+   * on the English message, and it is the key a localised message maps from.
+   */
+  code?: string;
+
+  /** The API's per-request trace id, for support ("quote this reference"). */
+  requestId?: string;
+
+  /**
    * Per-field messages from the API's zod validation, when it sent any.
    * `FormDialog` places these on their own input; without them a 400 collapses into
    * one sentence and the user has to guess which field was wrong.
    */
   fieldErrors?: Record<string, string[]>;
 
-  constructor(message: string, status: number, fieldErrors?: Record<string, string[]>) {
+  constructor(
+    message: string,
+    status: number,
+    options: { code?: string; requestId?: string; fieldErrors?: Record<string, string[]> } = {},
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.fieldErrors = fieldErrors;
+    this.code = options.code;
+    this.requestId = options.requestId;
+    this.fieldErrors = options.fieldErrors;
   }
 }
 
@@ -45,25 +61,42 @@ export function configureApiTokens(store: TokenStore | null) {
   tokenStore = store;
 }
 
+/** The API's error envelope: { success:false, error:{ code, message, details?, requestId } }. */
+interface ErrorEnvelope {
+  error?:
+    | string
+    | { code?: string; message?: string; details?: Record<string, string[]>; requestId?: string };
+  message?: unknown;
+  // Tolerated legacy location for field errors, in case an older response is seen.
+  details?: { fieldErrors?: Record<string, string[]> };
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
-  const payload = (await response.json().catch(() => null)) as
-    | (ApiEnvelope<T> & { error?: unknown; details?: { fieldErrors?: Record<string, string[]> } })
-    | null;
+  const payload = (await response.json().catch(() => null)) as (ApiEnvelope<T> & ErrorEnvelope) | null;
+
   if (!response.ok) {
+    const errObj = payload?.error && typeof payload.error === "object" ? payload.error : undefined;
+    // New shape puts field errors directly in error.details; fall back to legacy spots.
     const fieldErrors =
+      errObj?.details ??
       payload?.details?.fieldErrors ??
-      (payload?.error && typeof payload.error === "object"
-        ? (payload.error as { fieldErrors?: Record<string, string[]> }).fieldErrors
-        : undefined);
+      (errObj as { fieldErrors?: Record<string, string[]> } | undefined)?.fieldErrors;
+
     const first = Object.entries(fieldErrors ?? {}).find(([, messages]) => messages.length > 0);
     const message = first
       ? `${first[0]}: ${first[1][0]}`
-      : typeof payload?.message === "string"
-        ? payload.message
-        : typeof payload?.error === "string"
-          ? payload.error
-          : "The API request failed.";
-    throw new ApiError(message, response.status, fieldErrors);
+      : (errObj?.message ??
+        (typeof payload?.message === "string"
+          ? payload.message
+          : typeof payload?.error === "string"
+            ? payload.error
+            : "The API request failed."));
+
+    throw new ApiError(message, response.status, {
+      code: errObj?.code,
+      requestId: errObj?.requestId,
+      fieldErrors,
+    });
   }
 
   return (payload && "data" in payload ? payload.data : payload) as T;

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export interface AppShellProps {
   items: NavItem[];
-  /** Line under the ConstDoc wordmark, e.g. "Control center". */
+  /** Line under the Grupo G2H wordmark, e.g. "Control center". */
   subtitle: string;
   /** Who is signed in, shown at the foot of the sidebar. */
   userLabel: string;
@@ -44,7 +44,9 @@ export function AppShell({
       <MobileNav items={items} />
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-primary text-primary-foreground lg:flex">
         <div className="border-b border-primary-foreground/10 px-6 py-6">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">ConstDoc</p>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-accent">
+            Grupo <span className="text-primary-foreground">G2H</span>
+          </p>
           <p className="mt-1 text-sm text-primary-foreground/60">{subtitle}</p>
         </div>
         <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-5">

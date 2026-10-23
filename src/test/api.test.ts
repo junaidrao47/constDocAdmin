@@ -33,9 +33,11 @@ describe("errorMessage", () => {
 describe("ApiError", () => {
   it("carries the API's per-field messages so a form can place them", () => {
     const invalid = new ApiError("email: must be a valid email", 400, {
-      email: ["must be a valid email"],
+      code: "VALIDATION_FAILED",
+      fieldErrors: { email: ["must be a valid email"] },
     });
     expect(invalid.fieldErrors?.email).toEqual(["must be a valid email"]);
+    expect(invalid.code).toBe("VALIDATION_FAILED");
     expect(invalid.status).toBe(400);
   });
 });
@@ -66,6 +68,35 @@ describe("API client", () => {
     );
     const request = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
     expect(new Headers(request.headers).get("Authorization")).toBe("Bearer access-token");
+  });
+
+  it("parses the nested error envelope into code, message and field errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "VALIDATION_FAILED",
+              message: "Validation failed",
+              details: { email: ["Enter a valid work email."] },
+              requestId: "req-123",
+            },
+          }),
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await expect(apiRequest("/auth/login", { method: "POST" })).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_FAILED",
+      requestId: "req-123",
+      // The first field error becomes the headline message a form can show.
+      message: "email: Enter a valid work email.",
+      fieldErrors: { email: ["Enter a valid work email."] },
+    });
   });
 
   it("refreshes once and retries a 401 response", async () => {

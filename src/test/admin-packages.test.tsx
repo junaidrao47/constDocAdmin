@@ -9,9 +9,11 @@ import AdminPackagesPage from "@/app/(admin)/admin/packages/page";
 const { apiRequest, FakeApiError } = vi.hoisted(() => {
   class FakeApiError extends Error {
     status: number;
-    constructor(message: string, status = 400) {
+    code?: string;
+    constructor(message: string, status = 400, code?: string) {
       super(message);
       this.status = status;
+      this.code = code;
     }
   }
   return { apiRequest: vi.fn(), FakeApiError };
@@ -27,20 +29,36 @@ const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: toastSuccess, error: vi.fn() } }));
 
 const SERVICE_ID = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
+const CATEGORY_ID = "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb";
 const service = {
   id: SERVICE_ID,
   name: "Compliance review",
+  nameEn: "Compliance review",
   description: null,
   basePrice: 1500,
+  categoryId: CATEGORY_ID,
+  isActive: true,
+};
+const category = {
+  id: CATEGORY_ID,
+  slug: "permits",
+  nameEn: "Permits",
+  nameEs: "Permisos",
+  descriptionEn: null,
+  descriptionEs: null,
+  icon: null,
+  sortOrder: 0,
   isActive: true,
 };
 const pkg = {
   id: "pkg-1",
   name: "Premium compliance",
+  nameEn: "Premium compliance",
   type: "premium",
   price: 25000,
   durationDays: 365,
   description: "Full coverage",
+  categoryId: CATEGORY_ID,
   isActive: true,
   isFeatured: true,
   sortOrder: 1,
@@ -49,10 +67,10 @@ const pkg = {
   updatedAt: "2026-10-01T00:00:00.000Z",
 };
 
-// Packages is a client-mode list: the endpoint returns a bare array, not { data, pagination }.
 function defaultApi(path: string, init?: { method?: string }) {
   if (path === "/admin/packages" && !init) return Promise.resolve([pkg]);
   if (path.startsWith("/admin/services")) return Promise.resolve([service]);
+  if (path === "/admin/categories") return Promise.resolve([category]);
   return Promise.resolve({});
 }
 
@@ -63,6 +81,11 @@ function renderPage() {
       <AdminPackagesPage />
     </QueryClientProvider>,
   );
+}
+
+async function pickCategory(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText("Category"));
+  await user.click(await screen.findByRole("option", { name: "Permits" }));
 }
 
 beforeEach(() => {
@@ -89,7 +112,9 @@ describe("admin packages", () => {
     await user.click(screen.getByRole("button", { name: "New package" }));
     await user.click(screen.getByRole("button", { name: "Create package" }));
 
-    expect(await screen.findByText("Name is required")).toBeInTheDocument();
+    expect(await screen.findByText("A category is required")).toBeInTheDocument();
+    expect(screen.getByText("English name is required")).toBeInTheDocument();
+    expect(screen.getByText("Spanish name is required")).toBeInTheDocument();
     expect(screen.getByText("Type is required")).toBeInTheDocument();
     expect(apiRequest).not.toHaveBeenCalledWith(
       "/admin/packages",
@@ -97,13 +122,15 @@ describe("admin packages", () => {
     );
   });
 
-  it("sends the create payload with serviceIds and a null description", async () => {
+  it("sends the bilingual + category create payload", async () => {
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => expect(screen.getByText("Premium compliance")).toBeInTheDocument());
 
     await user.click(screen.getByRole("button", { name: "New package" }));
-    await user.type(screen.getByLabelText("Name"), "Starter");
+    await pickCategory(user);
+    await user.type(screen.getByLabelText("Name (English)"), "Starter");
+    await user.type(screen.getByLabelText("Name (Spanish)"), "Inicial");
     await user.type(screen.getByLabelText("Type"), "basic");
     await user.clear(screen.getByLabelText("Price (MXN)"));
     await user.type(screen.getByLabelText("Price (MXN)"), "1000");
@@ -115,11 +142,16 @@ describe("admin packages", () => {
         method: "POST",
         body: JSON.stringify({
           name: "Starter",
+          nameEn: "Starter",
+          nameEs: "Inicial",
           type: "basic",
           price: 1000,
           durationDays: 30,
           serviceIds: [SERVICE_ID],
+          categoryId: CATEGORY_ID,
           description: null,
+          descriptionEn: null,
+          descriptionEs: null,
           sortOrder: 0,
           isFeatured: false,
         }),
@@ -150,7 +182,6 @@ describe("admin packages", () => {
         "Package cannot be deleted while subscriptions reference it",
       ),
     );
-    // The reason has to stay where the action was taken.
     expect(screen.getByText("Delete this package?")).toBeInTheDocument();
   });
 
