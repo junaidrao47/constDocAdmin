@@ -23,10 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, errorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { formatMoney } from "@/lib/format";
 import type { Category, Package, Service } from "@/lib/types";
 import { useListQuery } from "@/lib/use-list-query";
+import { uploadWithProgress } from "@/lib/upload";
+
+// The API serves package images at `/api/public/catalog/images/...` on the API origin (local
+// mode) or as an absolute S3 URL. Resolve a path against the API origin; use an absolute URL
+// as-is so the admin preview loads either way.
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api").replace(
+  /\/api\/?$/,
+  "",
+);
+function resolveImageUrl(url?: string | null): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 
 // Mirrors the server's PackageSchema bounds so a bad value is caught before the round
 // trip; the server still validates, and its field errors land inline via FormDialog.
@@ -94,6 +109,8 @@ function nullIfBlank(value: string): string | null {
 
 export default function AdminPackagesPage() {
   const client = useQueryClient();
+  const { session } = useAuth();
+  const token = session?.accessToken ?? null;
   const [editing, setEditing] = useState<Package | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [statusTarget, setStatusTarget] = useState<Package | null>(null);
@@ -182,6 +199,36 @@ export default function AdminPackagesPage() {
       void client.invalidateQueries({ queryKey: ["admin-packages"] });
     },
     // No onError: the ConfirmDialog stays open and shows the 409 when subscriptions exist.
+  });
+
+  // Image upload targets an existing package (the route needs an id), so it is only offered
+  // in the edit dialog. The server returns the updated package, which replaces `editing` so
+  // the preview updates without a refetch; the list is invalidated so its rows pick it up too.
+  const uploadImage = useMutation({
+    mutationFn: (file: File) =>
+      uploadWithProgress<Package>({
+        path: `/admin/packages/${editing!.id}/image`,
+        file,
+        field: "image",
+        token,
+      }),
+    onSuccess: (updated) => {
+      toast.success("Image updated.");
+      setEditing(updated);
+      void client.invalidateQueries({ queryKey: ["admin-packages"] });
+    },
+    onError: (error) => toast.error(errorMessage(error, "Could not upload the image.")),
+  });
+
+  const removeImage = useMutation({
+    mutationFn: () =>
+      apiRequest<Package>(`/admin/packages/${editing!.id}/image`, { method: "DELETE" }),
+    onSuccess: (updated) => {
+      toast.success("Image removed.");
+      setEditing(updated);
+      void client.invalidateQueries({ queryKey: ["admin-packages"] });
+    },
+    onError: (error) => toast.error(errorMessage(error, "Could not remove the image.")),
   });
 
   function openCreate() {
@@ -498,6 +545,64 @@ export default function AdminPackagesPage() {
             <span className="text-xs text-destructive">
               {form.formState.errors.serviceIds.message}
             </span>
+          )}
+        </div>
+
+        <div className="grid gap-1.5">
+          <span className="text-sm font-medium">Marketing image</span>
+          {editing ? (
+            <div className="rounded-md border border-border p-3">
+              {resolveImageUrl(editing.imageUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolveImageUrl(editing.imageUrl)!}
+                  alt=""
+                  className="mb-3 h-32 w-full rounded object-cover"
+                />
+              ) : (
+                <p className="mb-3 text-sm text-muted-foreground">
+                  No image yet. The public card uses the category image until you upload one.
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">
+                  {uploadImage.isPending
+                    ? "Uploading…"
+                    : editing.imageUrl
+                      ? "Replace image"
+                      : "Upload image"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={uploadImage.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadImage.mutate(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {editing.imageUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={removeImage.isPending}
+                    onClick={() => removeImage.mutate()}
+                  >
+                    {removeImage.isPending ? "Removing…" : "Remove"}
+                  </Button>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                JPG, PNG or WebP, up to 8MB. A 16:9 image looks best.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Save the package first, then edit it to upload an image.
+            </p>
           )}
         </div>
 

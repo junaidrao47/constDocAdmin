@@ -28,6 +28,13 @@ vi.mock("@/lib/api", () => ({
 const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: toastSuccess, error: vi.fn() } }));
 
+// The page reads the session for the image-upload token and calls the upload helper; neither
+// is exercised by these tests, so a fixed session and a no-op upload keep them isolated.
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({ session: { accessToken: "test-token", user: { role: "admin" } } }),
+}));
+vi.mock("@/lib/upload", () => ({ uploadWithProgress: vi.fn() }));
+
 const SERVICE_ID = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
 const CATEGORY_ID = "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb";
 const service = {
