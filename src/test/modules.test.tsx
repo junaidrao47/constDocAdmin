@@ -25,7 +25,8 @@ function renderWithQuery(ui: React.ReactNode) {
 
 describe("frontend modules", () => {
   it("renders the customer, oversight, and admin module entry points", () => {
-    render(
+    // CustomersPage now fetches `/manager/customers`, so it needs a QueryClient.
+    renderWithQuery(
       <>
         <CustomersPage />
         <OversightPage />
