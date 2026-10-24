@@ -32,6 +32,13 @@ const STATUSES: Record<string, { label: string; tone: Tone }> = {
   partially_paid: { label: "Partially paid", tone: "warning" },
   paid: { label: "Paid", tone: "success" },
   overdue: { label: "Overdue", tone: "danger" },
+  // account lifecycle (PROJECT-BRIEF §11.1)
+  pending_approval: { label: "Pending approval", tone: "warning" },
+  suspended: { label: "Suspended", tone: "danger" },
+  // document phases (§11.5) — "rejected"/"approved" above are shared with documents
+  not_started: { label: "Not started", tone: "neutral" },
+  in_progress: { label: "In progress", tone: "warning" },
+  completed: { label: "Completed", tone: "success" },
 };
 
 const TONE_CLASSES: Record<Tone, string> = {

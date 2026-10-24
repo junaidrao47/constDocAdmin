@@ -15,26 +15,24 @@ export interface NavItem {
 /**
  * Admin sidebar, in the order the modules are worked through.
  *
- * Dashboard deliberately calls no API: `GET /admin/analytics` is a stub returning `{}`
- * and the backend CLAUDE.md says not to build UI on it, so the page stays link cards
- * until the real endpoints land.
- *
- * Customers will read `/admin/users?role=customer`. There is no `/admin/customers`
- * endpoint — customer records live in the users table.
+ * Analytics reads the real `GET /admin/analytics/overview` (the bare `GET /admin/analytics`
+ * stays a stub). Customers reads `GET /admin/customers` — the account-approval lifecycle,
+ * separate from the raw `/admin/users` table.
  */
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", ready: true },
+  { href: "/admin/analytics", label: "Analytics", ready: true },
   { href: "/admin/quotations", label: "Quotations", ready: true },
   { href: "/admin/invoices", label: "Invoices", ready: false },
   { href: "/admin/documents", label: "Documents", ready: true },
-  { href: "/admin/customers", label: "Customers", ready: false },
+  { href: "/admin/customers", label: "Customers", ready: true },
   { href: "/admin/categories", label: "Categories", ready: true },
   { href: "/admin/packages", label: "Packages", ready: true },
   { href: "/admin/services", label: "Services", ready: true },
   { href: "/admin/industries", label: "Industries", ready: false },
   { href: "/admin/worker-ranges", label: "Worker ranges", ready: false },
   { href: "/admin/locations", label: "Locations", ready: false },
-  { href: "/admin/settings", label: "Settings", ready: false },
+  { href: "/admin/settings", label: "Settings", ready: true },
   { href: "/admin/users", label: "Users", ready: true },
 ];
 

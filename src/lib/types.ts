@@ -1,5 +1,166 @@
 export type UserRole = "customer" | "agent" | "manager" | "admin";
 
+export type AccountStatus = "pending_approval" | "approved" | "suspended";
+export type UserLocale = "en" | "es-MX";
+
+/** One row of `GET /admin/customers`. persona/city come from the onboarding profile (null until onboarded). */
+export interface AdminCustomer {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: UserRole;
+  isActive: boolean;
+  accountStatus: AccountStatus;
+  preferredLocale: UserLocale;
+  managerId: string | null;
+  persona: string | null;
+  city: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCustomerList {
+  items: AdminCustomer[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** A manager option with their current assigned-customer count, from `GET /admin/managers`. */
+export interface ManagerSummary {
+  id: string;
+  name: string | null;
+  email: string;
+  customerCount: number;
+}
+
+/** The onboarding profile, as `GET /customers/me/onboarding` and the manager detail serialise it. */
+export interface Onboarding {
+  persona: string | null;
+  legalName: string | null;
+  contactName: string | null;
+  notificationEmails: string[];
+  phone: string | null;
+  state: string | null;
+  city: string | null;
+  needs: string[];
+  completedAt: string | null;
+  completed: boolean;
+}
+
+export interface PhaseProgress {
+  completed: number;
+  total: number;
+  percent: number;
+}
+
+/** A row of the manager "my customers" list, `GET /manager/customers`. */
+export interface ManagerCustomerListItem {
+  id: string;
+  email: string;
+  name: string | null;
+  accountStatus: AccountStatus;
+  documentsCount: number;
+  pendingDocuments: number;
+  progress: PhaseProgress;
+}
+
+export interface ManagerCustomerDocument {
+  id: string;
+  fileName: string;
+  status: DocumentStatus;
+  targetDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  progress: PhaseProgress;
+}
+
+export interface TimelineEntry {
+  type: "document_status" | "phase";
+  documentId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  note: string | null;
+  at: string;
+}
+
+/** `GET /manager/customers/:id` — full customer profile for the staff workspace. */
+export interface ManagerCustomerDetail {
+  customer: {
+    id: string;
+    email: string;
+    name: string | null;
+    phone: string | null;
+    accountStatus: AccountStatus;
+    preferredLocale: UserLocale;
+    managerId: string | null;
+  };
+  onboarding: Onboarding;
+  subscriptions: Array<{
+    id: string;
+    packageId: string | null;
+    status: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>;
+  documents: ManagerCustomerDocument[];
+  timeline: TimelineEntry[];
+}
+
+export type PhaseStatus = "not_started" | "in_progress" | "completed" | "rejected";
+
+/** One approval phase of a document, as `serializePhase` returns it. */
+export interface DocumentPhase {
+  id: string;
+  documentId: string;
+  position: number;
+  nameEn: string;
+  nameEs: string;
+  department: string | null;
+  targetDate: string | null;
+  status: PhaseStatus;
+  completedAt: string | null;
+  completedBy: string | null;
+  note: string | null;
+  resultVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `GET /documents/phases/statuses` — the single source of truth for the phase flow. */
+export interface PhaseStatusContract {
+  statuses: { value: PhaseStatus; key: string; terminal: boolean }[];
+  transitionsByRole: Record<string, Partial<Record<PhaseStatus, PhaseStatus[]>>>;
+}
+
+/** `GET /documents/:id` detail, which now carries phases + progress + the document target date. */
+export interface DocumentDetail extends DocumentRecord {
+  targetDate: string | null;
+  phases: DocumentPhase[];
+  progress: PhaseProgress;
+}
+
+/** The intent response shared by every upload pipeline (`buildUploadTarget`). */
+export interface UploadTarget {
+  uploadMode: "s3" | "local";
+  versionId: string;
+  upload: { method: string; url: string; fields: Record<string, string> };
+}
+
+/** `GET /admin/analytics/overview` (§11.9). */
+export interface AnalyticsOverview {
+  range: { from: string; to: string };
+  customersByStatus: { status: string; count: number }[];
+  registrationsOverTime: { day: string; count: number }[];
+  documentsByStatus: { status: string; count: number }[];
+  averagePhaseDurationSeconds: number;
+  documentsWaitingPerManager: { managerId: string; managerEmail: string; waiting: number }[];
+  quotationsFunnel: { status: string; count: number }[];
+  revenue: { currency: string; total: number };
+  emails: { status: string; count: number }[];
+}
+
 export type DocumentStatus =
   | "pending"
   | "under_review"
@@ -177,6 +338,7 @@ export interface Package {
   description: string | null;
   descriptionEn?: string | null;
   descriptionEs?: string | null;
+  imageUrl?: string | null;
   categoryId?: string | null;
   category?: CategoryRef | null;
   isActive: boolean;
