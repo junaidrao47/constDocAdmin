@@ -2,12 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, UploadCloud, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { Download, Eye } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { StatusBadge } from "@/components/status-badge";
+import { UploadPanel } from "@/components/upload-panel";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,7 +29,6 @@ import type {
   DocumentVersion,
   UserRole,
 } from "@/lib/types";
-import { uploadWithProgress } from "@/lib/upload";
 
 const TRANSITION_LABEL: Record<DocumentStatus, string> = {
   pending: "Send back to pending",
@@ -334,131 +334,3 @@ function RejectForm({
   );
 }
 
-function UploadPanel({
-  title,
-  description,
-  path,
-  token,
-  onDone,
-}: {
-  title: string;
-  description: string;
-  path: string;
-  token: string | null;
-  onDone: () => void;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const controllerRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  async function start(selected: File) {
-    setFile(selected);
-    setError(null);
-    setProgress(0);
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    try {
-      await uploadWithProgress({
-        path,
-        file: selected,
-        token,
-        onProgress: setProgress,
-        signal: controller.signal,
-      });
-      toast.success(`${title} uploaded.`);
-      setProgress(null);
-      setFile(null);
-      onDone();
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        setProgress(null);
-        return;
-      }
-      setError(messageForError(err, "The upload failed."));
-      setProgress(null);
-    }
-  }
-
-  const uploading = progress !== null;
-
-  return (
-    <div
-      className={`grid gap-2 border border-dashed p-3 ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
-      onDragOver={(event) => {
-        event.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setDragging(false);
-        const dropped = event.dataTransfer.files?.[0];
-        if (dropped) void start(dropped);
-      }}
-    >
-      <p className="text-sm font-medium">{title}</p>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      <input
-        ref={inputRef}
-        type="file"
-        className="hidden"
-        onChange={(event) => {
-          const chosen = event.target.files?.[0];
-          if (chosen) void start(chosen);
-          event.target.value = "";
-        }}
-      />
-
-      {!uploading && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => inputRef.current?.click()}
-        >
-          <UploadCloud size={15} /> Choose or drop a file
-        </Button>
-      )}
-
-      {uploading && (
-        <div className="grid gap-1">
-          <div className="h-2 w-full overflow-hidden rounded bg-muted">
-            <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="truncate">
-              {file?.name} · {progress}%
-            </span>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              aria-label="Cancel upload"
-              onClick={() => controllerRef.current?.abort()}
-            >
-              <X size={14} />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="grid gap-1">
-          <p role="alert" className="text-xs text-destructive">
-            {error}
-          </p>
-          {file && (
-            <Button type="button" size="sm" variant="outline" onClick={() => void start(file)}>
-              Retry
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
