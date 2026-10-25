@@ -18,10 +18,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { allowedPhaseTransitions, usePhaseStatusContract } from "@/lib/documents";
+import {
+  allowedPhaseTransitions,
+  allowedTransitions,
+  usePhaseStatusContract,
+  useStatusContract,
+} from "@/lib/documents";
 import { messageForError } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
-import type { DocumentDetail, DocumentPhase, DocumentVersion, PhaseStatus, UploadTarget } from "@/lib/types";
+import type { DocumentDetail, DocumentPhase, DocumentVersion, PhaseStatus, UploadTarget, UserRole } from "@/lib/types";
 import { uploadWithProgress } from "@/lib/upload";
 
 const PHASE_ACTION_LABEL: Record<PhaseStatus, string> = {
@@ -103,8 +108,10 @@ export default function StaffDocumentPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(360px,420px)]">
-        {/* Left: viewer + versions + staff uploads */}
+        {/* Left: decision + viewer + versions + staff uploads */}
         <div className="space-y-6">
+          <DocumentDecision documentId={id} document={document} role={role} onDone={refresh} />
+
           <DocumentViewer documentId={id} versions={versions.data ?? []} />
 
           <section className="space-y-2">
@@ -183,7 +190,7 @@ export default function StaffDocumentPage() {
                   index={index}
                   total={phases.length}
                   allPhaseIds={phases.map((p) => p.id)}
-                  allowed={allowedPhaseTransitions(phaseContract.data, role, phase.status)}
+                  allowed={allowedPhaseTransitions(phaseContract.data, phase.status)}
                   token={token}
                   onDone={refresh}
                 />
@@ -193,6 +200,105 @@ export default function StaffDocumentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+const DOC_STATUS_ACTION: Record<string, string> = {
+  pending: "Reset to pending",
+  under_review: "Start review",
+  approved: "Approve",
+  rejected: "Reject",
+  submitted_to_government: "Submit to government",
+  expiring_soon: "Mark expiring soon",
+  expired: "Mark expired",
+};
+
+/** Document-level status decision, driven by the role's allowed transitions from the contract. */
+function DocumentDecision({
+  documentId,
+  document,
+  role,
+  onDone,
+}: {
+  documentId: string;
+  document: DocumentDetail;
+  role: UserRole | undefined;
+  onDone: () => void;
+}) {
+  const contract = useStatusContract();
+  const allowed = allowedTransitions(contract.data, role, document.status);
+  const [rejectNote, setRejectNote] = useState<string | null>(null);
+
+  const change = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      apiRequest(`/documents/${documentId}/status`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      toast.success("Document updated.");
+      setRejectNote(null);
+      onDone();
+    },
+    onError: (error) => toast.error(messageForError(error, "Could not update the document.")),
+  });
+
+  if (allowed.length === 0) return null;
+
+  return (
+    <Card>
+      <CardContent className="grid gap-3 p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Decision</h2>
+          <StatusBadge status={document.status} />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {allowed.map((status) =>
+            status === "rejected" ? (
+              <Button
+                key={status}
+                size="sm"
+                variant="destructive"
+                disabled={change.isPending}
+                onClick={() => setRejectNote(rejectNote === null ? "" : null)}
+              >
+                {DOC_STATUS_ACTION[status] ?? status}
+              </Button>
+            ) : (
+              <Button
+                key={status}
+                size="sm"
+                variant={status === "approved" ? "default" : "outline"}
+                disabled={change.isPending}
+                onClick={() => change.mutate({ fromStatus: document.status, toStatus: status })}
+              >
+                {DOC_STATUS_ACTION[status] ?? status}
+              </Button>
+            ),
+          )}
+        </div>
+        {rejectNote !== null && (
+          <div className="grid gap-2">
+            <Textarea
+              rows={2}
+              placeholder="Reason for rejection (min 5 characters)"
+              value={rejectNote}
+              onChange={(e) => setRejectNote(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setRejectNote(null)} disabled={change.isPending}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={change.isPending || rejectNote.trim().length < 5}
+                onClick={() => change.mutate({ fromStatus: document.status, toStatus: "rejected", note: rejectNote })}
+              >
+                Confirm rejection
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

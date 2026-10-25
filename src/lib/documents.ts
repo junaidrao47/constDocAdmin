@@ -44,12 +44,17 @@ export function usePhaseStatusContract() {
   });
 }
 
-/** The phase statuses `role` may move a phase to from `from`, per the contract. */
+/**
+ * The phase statuses a document may move to from `from`, per the contract.
+ *
+ * Phase transitions are not role-scoped (the API gates manager/admin at the route), so the
+ * allowed set comes straight from the single `flow` map. Guards against a missing or
+ * malformed contract so the detail page never crashes while the contract is loading.
+ */
 export function allowedPhaseTransitions(
   contract: PhaseStatusContract | undefined,
-  role: UserRole | undefined,
   from: PhaseStatus | undefined,
 ): PhaseStatus[] {
-  if (!contract || !role || !from) return [];
-  return contract.transitionsByRole[role]?.[from] ?? [];
+  if (!contract?.flow || !from) return [];
+  return contract.flow[from] ?? [];
 }

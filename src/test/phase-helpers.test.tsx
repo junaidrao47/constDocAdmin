@@ -11,25 +11,28 @@ const contract: PhaseStatusContract = {
     { value: "completed", key: "phase.completed", terminal: true },
     { value: "rejected", key: "phase.rejected", terminal: false },
   ],
-  transitionsByRole: {
-    manager: {
-      not_started: ["in_progress"],
-      in_progress: ["completed", "rejected"],
-      rejected: ["in_progress"],
-    },
+  // Matches the real API shape: a single `from → [to]` flow, not keyed by role.
+  flow: {
+    not_started: ["in_progress", "completed", "rejected"],
+    in_progress: ["completed", "rejected"],
+    rejected: ["in_progress", "completed"],
+    completed: ["in_progress"],
   },
 };
 
 describe("allowedPhaseTransitions", () => {
-  it("returns the transitions for a role and current status", () => {
-    expect(allowedPhaseTransitions(contract, "manager", "in_progress")).toEqual(["completed", "rejected"]);
-    expect(allowedPhaseTransitions(contract, "manager", "not_started")).toEqual(["in_progress"]);
+  it("returns the transitions for the current status", () => {
+    expect(allowedPhaseTransitions(contract, "in_progress")).toEqual(["completed", "rejected"]);
+    expect(allowedPhaseTransitions(contract, "not_started")).toEqual([
+      "in_progress",
+      "completed",
+      "rejected",
+    ]);
   });
 
-  it("returns an empty list for an unknown role, status, or missing contract", () => {
-    expect(allowedPhaseTransitions(contract, "agent", "in_progress")).toEqual([]);
-    expect(allowedPhaseTransitions(contract, "manager", "completed")).toEqual([]);
-    expect(allowedPhaseTransitions(undefined, "manager", "in_progress")).toEqual([]);
+  it("returns an empty list for a missing status or contract", () => {
+    expect(allowedPhaseTransitions(contract, undefined)).toEqual([]);
+    expect(allowedPhaseTransitions(undefined, "in_progress")).toEqual([]);
   });
 });
 

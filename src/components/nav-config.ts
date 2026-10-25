@@ -29,9 +29,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/categories", label: "Categories", ready: true },
   { href: "/admin/packages", label: "Packages", ready: true },
   { href: "/admin/services", label: "Services", ready: true },
-  { href: "/admin/industries", label: "Industries", ready: false },
-  { href: "/admin/worker-ranges", label: "Worker ranges", ready: false },
-  { href: "/admin/locations", label: "Locations", ready: false },
+  { href: "/admin/calculator", label: "Calculator & pricing", ready: true },
   { href: "/admin/settings", label: "Settings", ready: true },
   { href: "/admin/users", label: "Users", ready: true },
 ];

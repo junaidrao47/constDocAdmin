@@ -131,7 +131,12 @@ export interface DocumentPhase {
 /** `GET /documents/phases/statuses` — the single source of truth for the phase flow. */
 export interface PhaseStatusContract {
   statuses: { value: PhaseStatus; key: string; terminal: boolean }[];
-  transitionsByRole: Record<string, Partial<Record<PhaseStatus, PhaseStatus[]>>>;
+  /**
+   * The phase transition map. Phase transitions are NOT role-scoped on the backend — the
+   * route authorizes manager/admin, and both may make any allowed transition — so this is a
+   * single `from → [to]` map (`GET /documents/phases/statuses` → `flow`), not keyed by role.
+   */
+  flow: Partial<Record<PhaseStatus, PhaseStatus[]>>;
 }
 
 /** `GET /documents/:id` detail, which now carries phases + progress + the document target date. */
@@ -208,6 +213,8 @@ export interface ApiEnvelope<T> {
 export interface DocumentRecord {
   id: string;
   customerId: string;
+  /** The customer's display name, attached by the staff review queue so the UI shows a person. */
+  customerName?: string | null;
   serviceId: string | null;
   requirementId?: string | null;
   currentVersionId?: string | null;
