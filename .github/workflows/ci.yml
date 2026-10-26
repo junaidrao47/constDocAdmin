@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Baked into the client bundle; a placeholder is fine for a build check.
+      NEXT_PUBLIC_API_URL: https://api.example.com/api
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # tsconfig.json extends ../constDocManagment/tsconfig.base.json, a sibling repo that
+      # is not in this single-repo checkout. Vendor a minimal equivalent at that path so
+      # tsc and next build resolve it (admin's own options override everything but casing).
+      - name: Vendor base tsconfig
+        run: |
+          mkdir -p ../constDocManagment
+          echo '{"compilerOptions":{"target":"ES2022","module":"CommonJS","moduleResolution":"Node","strict":true,"esModuleInterop":true,"forceConsistentCasingInFileNames":true,"skipLibCheck":true,"baseUrl":"."}}' > ../constDocManagment/tsconfig.base.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
