@@ -6,11 +6,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminServicesPage from "@/app/(admin)/admin/services/page";
 
 const { apiRequest } = vi.hoisted(() => ({ apiRequest: vi.fn() }));
+const { useAuth } = vi.hoisted(() => ({
+  useAuth: vi.fn(() => ({ session: { accessToken: "test-token", user: { email: "admin@example.com", role: "admin" } } })),
+}));
 vi.mock("@/lib/api", () => ({
   apiRequest,
   ApiError: class ApiError extends Error {},
   errorMessage: (_error: unknown, fallback: string) => fallback,
 }));
+vi.mock("@/lib/auth-context", () => ({ useAuth }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function renderPage() {

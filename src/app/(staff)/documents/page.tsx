@@ -33,6 +33,7 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
 export default function DocumentsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const documents = useQuery({
     queryKey: ["documents", statusFilter],
@@ -48,7 +49,10 @@ export default function DocumentsPage() {
         method: "PATCH",
         body: JSON.stringify({ fromStatus, toStatus }),
       }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["documents"] }),
+    onSuccess: () => {
+      setFeedback("Document status updated.");
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
   });
 
   const rows = documents.data ?? [];
@@ -71,6 +75,11 @@ export default function DocumentsPage() {
         }
       />
 
+      {feedback && (
+        <p role="status" className="mb-4 rounded-md bg-success/10 px-3 py-2 text-sm font-medium text-success">
+          {feedback}
+        </p>
+      )}
       <div className="mb-5 flex items-center gap-2">
         <span className="text-sm text-muted-foreground">Status</span>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
