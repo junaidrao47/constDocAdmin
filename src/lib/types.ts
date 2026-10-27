@@ -309,6 +309,11 @@ export interface CategoryRef {
 }
 
 /** A pricing service, as `GET /admin/services` serialises it. */
+export interface ServiceProcessStep {
+  title: string;
+  description: string;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -317,6 +322,11 @@ export interface Service {
   description: string | null;
   descriptionEn?: string | null;
   descriptionEs?: string | null;
+  imageUrl?: string | null;
+  whatsIncludedEn?: string[];
+  whatsIncludedEs?: string[];
+  processStepsEn?: ServiceProcessStep[];
+  processStepsEs?: ServiceProcessStep[];
   basePrice: number;
   categoryId?: string | null;
   category?: CategoryRef | null;

@@ -22,6 +22,8 @@ export interface NavItem {
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", ready: true },
   { href: "/admin/analytics", label: "Analytics", ready: true },
+  { href: "/admin/homepage", label: "Homepage hero", ready: true },
+  { href: "/admin/content", label: "Site content", ready: true },
   { href: "/admin/quotations", label: "Quotations", ready: true },
   { href: "/admin/invoices", label: "Invoices", ready: false },
   { href: "/admin/documents", label: "Documents", ready: true },
