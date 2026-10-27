@@ -60,8 +60,10 @@ describe("API client", () => {
     );
 
     await expect(apiRequest<{ id: string }>("/documents")).resolves.toEqual({ id: "doc-1" });
+    // The base origin comes from NEXT_PUBLIC_API_URL, which differs between local dev and CI,
+    // so assert on the resolved path rather than a hardcoded origin.
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/api/documents",
+      expect.stringContaining("/api/documents"),
       expect.objectContaining({
         headers: expect.any(Headers),
       }),
